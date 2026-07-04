@@ -1,0 +1,58 @@
+{
+  "name": "@drincs/pixi-vn-live2d",
+  "description": "Spine 2D integration for Pixi'VN",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "workspaces": [
+    "playground"
+  ],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup --config tsup.config.ts",
+    "lint": "biome lint",
+    "check": "biome check",
+    "format": "biome format --write",
+    "test": "vitest",
+    "docs": "typedoc",
+    "playground": "npm run build && npm run dev --workspace=playground"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "jsdom": "^29.0.2",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typedoc": "^0.28.19",
+    "typedoc-plugin-markdown": "^4.12.0",
+    "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1"
+  },
+  "peerDependencies": {
+    "@drincs/pixi-vn": ">=1.5.0"
+  },
+  "keywords": [
+    "game",
+    "js",
+    "novel",
+    "pixi",
+    "pixi-vn",
+    "visual",
+    "visual-novel"
+  ],
+  "dependencies": {
+    "vitest": "^4.1.4"
+  }
+}
