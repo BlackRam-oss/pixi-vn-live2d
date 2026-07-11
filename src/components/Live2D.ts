@@ -308,7 +308,7 @@ export default class Live2D
     ): this {
         addListenerHandler(event, this, fn);
 
-        return super.on<T>(event, (...e) => fn(...e, this), context);
+        return super.on<T>(event, (...e) => fn.apply(context, [...e, this]), context);
     }
 
     /** AdditionalPositions */
