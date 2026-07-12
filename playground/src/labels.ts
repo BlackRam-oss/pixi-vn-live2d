@@ -52,3 +52,21 @@ export const expressionLabel = newLabel("expression", [
     },
     ()=>{}
 ]);
+
+/**
+ * Loads a model rich in expressions and motions, then leaves it on screen so the UI
+ * can drive `expression()`, `motion()` and hit-testing interactively via buttons.
+ */
+export const interactiveLabel = newLabel("interactive", [
+    async () => {
+        const live2d = await Live2D.create({
+            source: "https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples/Samples/Resources/Mao/Mao.model3.json",
+        });
+        live2d.anchor.set(0.5, 1);
+        live2d.scale.set((canvas.height * 0.9) / live2d.height);
+        live2d.position.set(canvas.width / 2, canvas.height);
+        live2d.eventMode = "static";
+        canvas.add("live2d", live2d);
+    },
+    ()=>{}
+]);
