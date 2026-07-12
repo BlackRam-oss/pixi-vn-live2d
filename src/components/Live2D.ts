@@ -4,6 +4,7 @@ import { getSuperPivot } from "@/utils/props-utility";
 import {
     addListenerHandler,
     analizePositionsExtensionProps,
+    Assets,
     CanvasPropertyUtility as PropsUtils,
     RegisteredCanvasComponents,
     setMemoryContainer,
@@ -28,13 +29,30 @@ import type {
 const CANVAS_LIVE2D_ID = "Live2D";
 
 /**
+ * Resolves a `source` to a loadable URL. If it matches an alias registered with Pixi's
+ * `Assets` (e.g. via `Assets.add({ alias, src })`), the alias is resolved to its `src`;
+ * otherwise `source` is assumed to already be a direct URL and is returned as-is.
+ */
+function resolveSource(source: string): string {
+    if (!Assets.resolver.hasKey(source)) {
+        return source;
+    }
+    const resolved = Assets.resolver.resolveUrl(source);
+    return typeof resolved === "string" ? resolved : source;
+}
+
+/**
  * Live2D component for Pixi.js, used to display Live2D components.
  * @example
  * ```ts
- * import { canvas } from "@drincs/pixi-vn";
+ * import { Assets, canvas } from "@drincs/pixi-vn";
  * import { Live2D } from "@drincs/pixi-vn-live2d";
  *
- * const live2d = new Live2D({ source: "https://example.com/model/model3.json" });
+ * // Register an alias so the source can be swapped from a single place
+ * // (and so it can be reloaded from memory even if the URL changes later).
+ * Assets.add({ alias: "haru", src: "https://example.com/model/model3.json" });
+ *
+ * const live2d = new Live2D({ source: "haru" });
  * await live2d.ready;
  * live2d.anchor.set(0.5);
  * live2d.x = canvas.width / 2;
@@ -114,7 +132,11 @@ export default class Live2D
         if (percentagePosition) {
             this.percentagePosition = percentagePosition;
         }
-        this._ready = Live2DFactory.setupLive2DModel(this, source, setupOptions).catch((e) => {
+        this._ready = Live2DFactory.setupLive2DModel(
+            this,
+            resolveSource(source),
+            setupOptions,
+        ).catch((e) => {
             logger.error(`Failed to load the Live2D model from "${this.sourceAlias}"`, e);
             throw e;
         });

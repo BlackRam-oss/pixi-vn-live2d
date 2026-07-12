@@ -1,11 +1,25 @@
-import { canvas, newLabel } from "@drincs/pixi-vn";
+import { Assets, canvas, newLabel } from "@drincs/pixi-vn";
 import { Live2D } from "@drincs/pixi-vn-live2d";
+
+// Register each model under an alias instead of passing raw URLs around: Live2D resolves
+// `source` through `Assets` when it matches a registered alias, so the URL only lives here.
+Assets.add({
+    alias: "shizuku",
+    src: "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json",
+});
+Assets.add({
+    alias: "haru",
+    src: "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
+});
+Assets.add({
+    alias: "mao",
+    src: "https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples/Samples/Resources/Mao/Mao.model3.json",
+});
 
 export const baseLabel = newLabel("base", [
     async () => {
         const live2d = await Live2D.create({
-            source:
-                "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json",
+            source: "shizuku",
         });
         live2d.anchor.set(0.5, 1);
         live2d.scale.set((canvas.height * 0.9) / live2d.height);
@@ -18,8 +32,7 @@ export const baseLabel = newLabel("base", [
 export const motionLabel = newLabel("motion", [
     async () => {
         const live2d = await Live2D.create({
-            source:
-                "https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json",
+            source: "haru",
         });
         live2d.anchor.set(0.5, 1);
         live2d.scale.set((canvas.height * 0.9) / live2d.height);
@@ -41,7 +54,7 @@ export const motionLabel = newLabel("motion", [
 export const expressionLabel = newLabel("expression", [
     async () => {
         const live2d = await Live2D.create({
-            source: "https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples/Samples/Resources/Mao/Mao.model3.json",
+            source: "mao",
         });
         live2d.anchor.set(0.5, 1);
         live2d.scale.set((canvas.height * 0.9) / live2d.height);
@@ -60,7 +73,7 @@ export const expressionLabel = newLabel("expression", [
 export const interactiveLabel = newLabel("interactive", [
     async () => {
         const live2d = await Live2D.create({
-            source: "https://cdn.jsdelivr.net/gh/Live2D/CubismWebSamples/Samples/Resources/Mao/Mao.model3.json",
+            source: "mao",
         });
         live2d.anchor.set(0.5, 1);
         live2d.scale.set((canvas.height * 0.9) / live2d.height);
