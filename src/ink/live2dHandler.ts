@@ -22,6 +22,27 @@ import {
 import { z } from "zod";
 
 /**
+ * `live2DOptionsSchema` (generated from `Live2DOptions`, which itself omits `source` — see
+ * `scripts/generate-live2d-options-schema.mjs`) never has a `source` key, since neither
+ * `# show live2d` command takes it as a `<key> <value>` prop: one uses `<alias>` as the source,
+ * the other takes `<source>` as its own positional token.
+ */
+const live2DOptionsPropertyKeys = new Set(
+    Object.keys((live2DOptionsSchema as { properties: Record<string, object> }).properties),
+);
+
+/**
+ * Tells apart `# show live2d <alias> [<key> <value> …]` (`<alias>` doubles as the source) from
+ * `# show live2d <alias> <source> [<key> <value> …]` (an explicit, separate `<source>`): the token
+ * right after `<alias>` is either the start of the free-form props (a recognized
+ * `Live2DOptions` key), the `with` transition keyword, absent (no tail at all), or — only then —
+ * an explicit `<source>`.
+ */
+function isPropsOrWithToken(token: string | undefined): boolean {
+    return token === undefined || token === "with" || live2DOptionsPropertyKeys.has(token);
+}
+
+/**
  * The transition types used to remove a canvas element **out** (as opposed to
  * `dissolve`/`fade`/`movein`/`zoomin`/`pushin`, used only to bring one in). Mirrors
  * `@drincs/pixi-vn-json/actions`' own `ENTRANCE_TRANSITION_TYPES`, but for `# remove live2d`.
@@ -103,87 +124,121 @@ export function parseShowLive2DTail(tail: string[]): {
 }
 
 /**
+ * Runs the shared `# show live2d` logic once `<alias>` and `<source>` have been resolved: parses
+ * the tail into construction props and an optional entrance transition, constructs the
+ * {@link Live2D} instance, and shows it (via the transition, or directly via `canvas.add`).
+ */
+async function runShowLive2D(
+    alias: string,
+    source: string,
+    tail: string[],
+    convertListStringToObj: (listParm: string[]) => object,
+): Promise<true> {
+    const { propsList, transitionType, transitionPropsList } = parseShowLive2DTail(tail);
+
+    let props: Record<string, unknown> = {};
+    if (propsList.length > 0) {
+        try {
+            props = convertListStringToObj(propsList) as Record<string, unknown>;
+        } catch (e) {
+            logger.error(`Failed to parse props for "show live2d ${alias}"`, e);
+            return true;
+        }
+    }
+
+    const live2d = new Live2D({
+        ...(props as Partial<Live2DOptions>),
+        source,
+    });
+    try {
+        await live2d.ready;
+    } catch {
+        return true;
+    }
+
+    if (transitionType) {
+        let transitionProps: object | undefined;
+        if (transitionPropsList.length > 0) {
+            try {
+                transitionProps = convertListStringToObj(transitionPropsList);
+            } catch (e) {
+                logger.error(`Failed to parse transition props for "show live2d ${alias}"`, e);
+            }
+        }
+        await executeEntranceTransition(alias, live2d, transitionType, transitionProps);
+    } else {
+        canvas.add(alias, live2d);
+    }
+    return true;
+}
+
+/**
  * Registers the `# show live2d` Ink hashtag command, letting Ink scripts show a {@link Live2D}
  * canvas element the same way `@drincs/pixi-vn-ink`'s built-in `# show image` shows an
- * `ImageSprite`: `<alias>` is just the canvas key (like every other `# show ...` command), and
- * `source` is required among the free-form `<key> <value>` construction props (forwarded to
- * {@link Live2DOptions}). An optional entrance transition can run the element in.
+ * `ImageSprite`: `<alias>` is just the canvas key (like every other `# show ...` command).
+ * `<source>` (the model settings URL, or an asset alias) is an optional second positional token —
+ * when omitted, `<alias>` itself is used as the source. Key/value construction props (forwarded to
+ * {@link Live2DOptions}) and an optional entrance transition follow.
+ *
+ * Registered as two handlers (one per position of the free-form props, since `keySchemas` keys
+ * refer to a fixed token index) that together behave as a single command with an optional
+ * `<source>`.
  *
  * Call this once, near the start of your app (alongside e.g. `addBaseHashtagCommands`), before any
  * Ink content is parsed.
  *
  * @example
  * ```ink
- * # show live2d hero source hero xAlign 0.5 yAlign 1 with dissolve duration 1
+ * # show live2d hero xAlign 0.5 yAlign 1 with dissolve duration 1
+ * # show live2d hero hero-alt xAlign 0.5 yAlign 1 with dissolve duration 1
  * ```
  */
 export function createLive2DHandler(): void {
     HashtagCommands.add(
-        async (list, _props, convertListStringToObj) => {
+        (list, _props, convertListStringToObj) => {
             const alias = list[2];
-            const { propsList, transitionType, transitionPropsList } = parseShowLive2DTail(
-                list.slice(3),
-            );
-
-            let props: Record<string, unknown> = {};
-            if (propsList.length > 0) {
-                try {
-                    props = convertListStringToObj(propsList) as Record<string, unknown>;
-                } catch (e) {
-                    logger.error(`Failed to parse props for "show live2d ${alias}"`, e);
-                    return true;
-                }
-            }
-            const { source, ...rest } = props;
-            if (typeof source !== "string") {
-                logger.error(
-                    `"show live2d ${alias}" requires a "source" prop with the model settings URL or asset alias, e.g. "source hero"`,
-                );
-                return true;
-            }
-
-            const live2d = new Live2D({
-                ...(rest as Partial<Live2DOptions>),
-                source,
-            });
-            try {
-                await live2d.ready;
-            } catch {
-                return true;
-            }
-
-            if (transitionType) {
-                let transitionProps: object | undefined;
-                if (transitionPropsList.length > 0) {
-                    try {
-                        transitionProps = convertListStringToObj(transitionPropsList);
-                    } catch (e) {
-                        logger.error(
-                            `Failed to parse transition props for "show live2d ${alias}"`,
-                            e,
-                        );
-                    }
-                }
-                await executeEntranceTransition(alias, live2d, transitionType, transitionProps);
-            } else {
-                canvas.add(alias, live2d);
-            }
-            return true;
+            return runShowLive2D(alias, alias, list.slice(3), convertListStringToObj);
         },
         {
             name: "Show live2d",
-            description: `Shows a Live2D canvas element with key/value construction properties (forwarded to \`Live2DOptions\`) and an optional entrance transition. \`<alias>\` is just the canvas key; \`source\` (the model settings URL, or an asset alias) is required among the key/value properties, e.g. "source hero".
+            description: `Shows a Live2D canvas element with key/value construction properties (forwarded to \`Live2DOptions\`) and an optional entrance transition. \`<alias>\` is the canvas key (like every other \`# show ...\` command); since no separate \`source\` prop is passed here, \`<alias>\` itself is used as the source (the model settings URL, or an asset alias) — e.g. "show live2d hero" loads the model from source "hero". If the canvas key and the source need to differ (e.g. showing the same model under two aliases), use "Show live2d with source" instead to pass an explicit, separate \`<source>\`.
 
 \`\`\`ink
 # show live2d <alias> [<key> <value> …] [with dissolve|fade|movein|moveout|zoomin|zoomout|pushin|pushout [<key> <value> …]]
 \`\`\``,
             validation: z
                 .tuple([z.literal("show"), z.literal("live2d"), z.string()])
-                .rest(z.string()),
+                .rest(z.string())
+                .refine((list) => isPropsOrWithToken(list[3])),
             keySchemas: {
                 with: {},
                 ...entranceTransitionKeySchemas,
                 3: live2DOptionsSchema,
+            },
+        },
+    );
+
+    HashtagCommands.add(
+        (list, _props, convertListStringToObj) => {
+            const alias = list[2];
+            const source = list[3];
+            return runShowLive2D(alias, source, list.slice(4), convertListStringToObj);
+        },
+        {
+            name: "Show live2d with source",
+            description: `Shows a Live2D canvas element like "Show live2d", but with an explicit \`<source>\` (the model settings URL, or an asset alias) distinct from \`<alias>\` — use this when the canvas key shouldn't also be the source, e.g. to show the same model under two different aliases.
+
+\`\`\`ink
+# show live2d <alias> <source> [<key> <value> …] [with dissolve|fade|movein|moveout|zoomin|zoomout|pushin|pushout [<key> <value> …]]
+\`\`\``,
+            validation: z
+                .tuple([z.literal("show"), z.literal("live2d"), z.string(), z.string()])
+                .rest(z.string())
+                .refine((list) => !isPropsOrWithToken(list[3])),
+            keySchemas: {
+                with: {},
+                ...entranceTransitionKeySchemas,
+                4: live2DOptionsSchema,
             },
         },
     );

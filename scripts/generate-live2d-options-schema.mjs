@@ -13,6 +13,11 @@
  *
  * Run via `npm run generate-live2d-options-schema`; re-run whenever `Live2DOptions` (or the
  * `@drincs/pixi-vn`/`untitled-pixi-live2d-engine` types it derives from) changes.
+ *
+ * `source` is dropped from the generated schema: neither `# show live2d` command (see
+ * `createLive2DHandler`) takes it as a `<key> <value>` prop — one uses `<alias>` as the source,
+ * the other takes `<source>` as its own positional token — so it would never legitimately appear
+ * among the free-form props this schema validates.
  */
 
 import { writeFileSync } from "node:fs";
@@ -53,6 +58,16 @@ function toStandaloneSchema(rootSchema) {
 
 const live2DOptionsSchema = toStandaloneSchema(schemas.Live2DOptions);
 
+/** Drops `source` (see the header comment above for why). */
+function withoutSource(schema) {
+    const { source, ...properties } = schema.properties ?? {};
+    return {
+        ...schema,
+        properties,
+        required: (schema.required ?? []).filter((key) => key !== "source"),
+    };
+}
+
 const outPath = join(rootDir, "src", "ink", "live2d-options-schema.generated.ts");
 const banner = `/**
  * GENERATED FILE — do not edit by hand.
@@ -67,6 +82,9 @@ const banner = `/**
  */
 export const live2DOptionsSchema: object = `;
 
-writeFileSync(outPath, `${banner}${JSON.stringify(live2DOptionsSchema, null, 4)};\n`);
+writeFileSync(
+    outPath,
+    `${banner}${JSON.stringify(withoutSource(live2DOptionsSchema), null, 4)};\n`,
+);
 
 console.log(`Generated: ${outPath}`);

@@ -73,29 +73,58 @@ describe("parseShowLive2DTail", () => {
 });
 
 describe("createLive2DHandler", () => {
-    test("registers 'Show live2d'", () => {
+    test("registers 'Show live2d' and 'Show live2d with source'", () => {
         createLive2DHandler();
         const names = HashtagCommands.info().map((o) => o.name);
         expect(names).toContain("Show live2d");
+        expect(names).toContain("Show live2d with source");
     });
 
-    test("validation accepts an alias with a source prop", () => {
+    test("'Show live2d' validation accepts an alias-only invocation, but not one with an explicit source", () => {
         createLive2DHandler();
         const opts = HashtagCommands.info().find((o) => o.name === "Show live2d");
         const validation = opts?.validation as { safeParse: (v: unknown) => { success: boolean } };
-        expect(validation.safeParse(["show", "live2d", "hero", "source", "hero"]).success).toBe(
+        expect(validation.safeParse(["show", "live2d", "hero"]).success).toBe(true);
+        expect(validation.safeParse(["show", "live2d", "hero", "xAlign", "0.5"]).success).toBe(
             true,
+        );
+        expect(validation.safeParse(["show", "live2d", "hero", "hero-alt"]).success).toBe(false);
+    });
+
+    test("'Show live2d with source' validation accepts an explicit source, but not a bare key/value prop", () => {
+        createLive2DHandler();
+        const opts = HashtagCommands.info().find((o) => o.name === "Show live2d with source");
+        const validation = opts?.validation as { safeParse: (v: unknown) => { success: boolean } };
+        expect(validation.safeParse(["show", "live2d", "hero", "hero-alt"]).success).toBe(true);
+        expect(
+            validation.safeParse(["show", "live2d", "hero", "hero-alt", "xAlign", "0.5"]).success,
+        ).toBe(true);
+        expect(validation.safeParse(["show", "live2d", "hero", "xAlign", "0.5"]).success).toBe(
+            false,
         );
     });
 
-    test("registers a keySchemas section for the props position and each entrance transition", () => {
+    test("registers a keySchemas section (without 'source') for the props position and each entrance transition", () => {
         createLive2DHandler();
         const opts = HashtagCommands.info().find((o) => o.name === "Show live2d");
         expect(Object.keys(opts?.keySchemas ?? {})).toEqual(
             expect.arrayContaining(["with", "dissolve", "fade", "movein", "zoomin", "pushin", "3"]),
         );
-        const propsSchema = (opts?.keySchemas as Record<string, { required?: string[] }>)?.[3];
-        expect(propsSchema?.required).toContain("source");
+        const propsSchema = (
+            opts?.keySchemas as Record<string, { required?: string[]; properties?: object }>
+        )?.[3];
+        expect(propsSchema?.required ?? []).not.toContain("source");
+        expect(propsSchema?.properties).not.toHaveProperty("source");
+    });
+
+    test("'Show live2d with source' registers its keySchemas props section at position 4", () => {
+        createLive2DHandler();
+        const opts = HashtagCommands.info().find((o) => o.name === "Show live2d with source");
+        const propsSchema = (
+            opts?.keySchemas as Record<string, { required?: string[]; properties?: object }>
+        )?.[4];
+        expect(propsSchema?.required ?? []).not.toContain("source");
+        expect(propsSchema?.properties).not.toHaveProperty("source");
     });
 });
 
@@ -105,8 +134,8 @@ describe("createLive2DHandler: running '# show live2d' through HashtagCommands.r
         vi.spyOn(canvas, "add").mockImplementation(() => undefined as never);
     });
 
-    test("alias is just the canvas key; source comes from props, no transition -> canvas.add", async () => {
-        await HashtagCommands.run("show live2d hero source hero", step, {} as never);
+    test("no explicit source: alias doubles as source, no transition -> canvas.add", async () => {
+        await HashtagCommands.run("show live2d hero", step, {} as never);
 
         expect(Live2D).toHaveBeenCalledWith({ source: "hero" });
 
@@ -118,11 +147,7 @@ describe("createLive2DHandler: running '# show live2d' through HashtagCommands.r
     });
 
     test("forwards extra key/value props to the Live2D constructor", async () => {
-        await HashtagCommands.run(
-            "show live2d hero source hero xAlign 0.5 yAlign 1",
-            step,
-            {} as never,
-        );
+        await HashtagCommands.run("show live2d hero xAlign 0.5 yAlign 1", step, {} as never);
 
         expect(Live2D).toHaveBeenCalledWith({
             source: "hero",
@@ -132,11 +157,7 @@ describe("createLive2DHandler: running '# show live2d' through HashtagCommands.r
     });
 
     test("with a supported entrance transition: executeEntranceTransition runs instead of canvas.add", async () => {
-        await HashtagCommands.run(
-            "show live2d hero source hero with dissolve duration 1",
-            step,
-            {} as never,
-        );
+        await HashtagCommands.run("show live2d hero with dissolve duration 1", step, {} as never);
 
         expect(executeEntranceTransition).toHaveBeenCalledTimes(1);
         const [alias, live2dArg, type, transitionProps] = vi.mocked(executeEntranceTransition)
@@ -149,24 +170,33 @@ describe("createLive2DHandler: running '# show live2d' through HashtagCommands.r
     });
 
     test("an unsupported (exit-only) transition type falls back to a plain canvas.add", async () => {
-        await HashtagCommands.run(
-            "show live2d hero source hero with moveout duration 1",
-            step,
-            {} as never,
-        );
+        await HashtagCommands.run("show live2d hero with moveout duration 1", step, {} as never);
 
         expect(executeEntranceTransition).not.toHaveBeenCalled();
         expect(canvas.add).toHaveBeenCalledTimes(1);
     });
 
-    test("missing source prop: logs an error and never constructs a Live2D", async () => {
-        const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+    test("an explicit source distinct from alias: Live2D gets the source, canvas.add gets the alias", async () => {
+        await HashtagCommands.run("show live2d hero hero-alt", step, {} as never);
 
-        await HashtagCommands.run("show live2d hero xAlign 0.5", step, {} as never);
+        expect(Live2D).toHaveBeenCalledWith({ source: "hero-alt" });
+        expect(canvas.add).toHaveBeenCalledTimes(1);
+        const [aliasArg, live2dArg] = vi.mocked(canvas.add).mock.calls[0];
+        expect(aliasArg).toBe("hero");
+        expect(live2dArg).toMatchObject({ source: "hero-alt" });
+    });
 
-        expect(errorSpy).toHaveBeenCalled();
-        expect(Live2D).not.toHaveBeenCalled();
-        expect(canvas.add).not.toHaveBeenCalled();
+    test("an explicit source forwards extra key/value props and supports a transition", async () => {
+        await HashtagCommands.run(
+            "show live2d hero hero-alt xAlign 0.5 with dissolve duration 1",
+            step,
+            {} as never,
+        );
+
+        expect(Live2D).toHaveBeenCalledWith({ source: "hero-alt", xAlign: 0.5 });
+        expect(executeEntranceTransition).toHaveBeenCalledTimes(1);
+        const [alias] = vi.mocked(executeEntranceTransition).mock.calls[0];
+        expect(alias).toBe("hero");
     });
 
     test("a malformed command (missing alias) is left unhandled", async () => {

@@ -12,9 +12,6 @@
 export const live2DOptionsSchema: object = {
     type: "object",
     properties: {
-        source: {
-            type: "string",
-        },
         checkMocConsistency: {
             enum: [false, true],
         },
@@ -661,6 +658,6 @@ export const live2DOptionsSchema: object = {
             type: "number",
         },
     },
-    required: ["source"],
+    required: [],
     additionalProperties: false,
 };
