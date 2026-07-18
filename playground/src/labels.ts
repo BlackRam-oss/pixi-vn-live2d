@@ -20,7 +20,8 @@ export const baseLabel = newLabel("base", [
     async () => {
         const live2d = new Live2D({
             source: "shizuku",
-            align: { x: 0.5, y: 1 },
+            xAlign: 0.5,
+            yAlign: 1,
             scale: 0.3,
         });
         await live2d.ready;
@@ -74,10 +75,10 @@ export const interactiveLabel = newLabel("interactive", [
     async () => {
         const live2d = new Live2D({
             source: "mao",
-            align: { x: 0.5, y: 1 },
-            scale: 0.3,
         });
         await live2d.ready;
+        live2d.scale.set((canvas.height * 0.9) / live2d.height);
+        live2d.align = { x: 0.5, y: 1 };
         live2d.eventMode = "static";
         canvas.add("live2d", live2d);
     },

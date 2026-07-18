@@ -495,6 +495,7 @@ export default class Live2D
                     PropsUtils.getSuperWidth(this),
                     superPivot.x,
                     superScale.x < 0,
+                    this.anchor.x,
                 );
             }
             if (this._align.y !== undefined) {
@@ -504,6 +505,7 @@ export default class Live2D
                     PropsUtils.getSuperHeight(this),
                     superPivot.y,
                     superScale.y < 0,
+                    this.anchor.y,
                 );
             }
         } else if (this._percentagePosition) {
