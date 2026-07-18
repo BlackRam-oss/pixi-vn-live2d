@@ -20,7 +20,8 @@
     "format": "biome format --write",
     "test": "vitest",
     "docs": "typedoc",
-    "playground": "npm run build && npm run dev --workspace=playground"
+    "playground": "npm run build && npm run dev --workspace=playground",
+    "generate-live2d-options-schema": "node scripts/generate-live2d-options-schema.mjs && biome format --write src/ink/live2d-options-schema.generated.ts"
   },
   "exports": {
     ".": {
@@ -45,6 +46,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@drincs/pixi-vn-json": "^1.13.17",
     "jsdom": "^29.0.2",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
