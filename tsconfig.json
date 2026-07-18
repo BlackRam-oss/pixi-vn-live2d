@@ -5,6 +5,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "paths": {
+      "@drincs/pixi-vn-live2d": ["./src/index.ts"],
       "@drincs/pixi-vn-live2d/core": ["./src/core/index.ts"],
       "pixi.js": ["./node_modules/@drincs/pixi-vn/pixi.js"],
       "@/*": ["./src/*"]

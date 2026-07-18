@@ -35,17 +35,27 @@
       "import": "./dist/core.js",
       "require": "./dist/core.js",
       "default": "./dist/core.js"
+    },
+    "./ink": {
+      "types": "./dist/ink.d.ts",
+      "import": "./dist/ink.mjs",
+      "require": "./dist/ink.cjs",
+      "default": "./dist/ink.mjs"
     }
   },
   "typesVersions": {
     "*": {
       "core": [
         "./dist/core.d.ts"
+      ],
+      "ink": [
+        "./dist/ink.d.ts"
       ]
     }
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@drincs/pixi-vn-ink": "^1.1.8",
     "@drincs/pixi-vn-json": "^1.13.17",
     "jsdom": "^29.0.2",
     "ts-node": "^10.9.2",
@@ -53,11 +63,22 @@
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "^4.12.0",
     "typescript": "^5.9.3",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite-tsconfig-paths": "^6.1.1",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@drincs/pixi-vn": ">=1.5.13",
-    "untitled-pixi-live2d-engine": "^1.2.2"
+    "@drincs/pixi-vn-ink": ">=1.1.6",
+    "untitled-pixi-live2d-engine": "^1.2.2",
+    "zod": ">=4.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@drincs/pixi-vn-ink": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
   },
   "dependencies": {
     "vitest": "^4.1.4"
